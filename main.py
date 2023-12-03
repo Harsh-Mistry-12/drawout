@@ -1,3 +1,4 @@
+# BACKGROUND REMOVER API WITHOUT AUTH
 from fastapi import FastAPI, File, UploadFile
 from fastapi.responses import FileResponse
 from random import randint
