@@ -20,57 +20,66 @@ fetch_credentials = mysql.connector.connect(
 )
 fetch_cur = fetch_credentials.cursor()
 
-username_query = "SELECT user_name, token from user_credentials"
-fetch_cur.execute(username_query)
-info = fetch_cur.fetchall()
+# username_query = "SELECT user_name, token from user_credentials"
+username_query = "SELECT user_name FROM user_credentials WHERE token = %s"
+
 # print(username[0][0]) ---> username
 # print(username[0][1]) ---> token
 
-for credentials in info:
+# for credentials in info:
     # print(credentials[0])
 
-    IMAGEDIR_UPLOAD = "uploaded_images/"
-    IMAGEDIR_CLEANED = "cleaned_images/"
+IMAGEDIR_UPLOAD = "uploaded_images/"
+IMAGEDIR_CLEANED = "cleaned_images/"
 
-    app = FastAPI() 
+app = FastAPI() 
 
-    # OAuth2 password bearer for user authentication
-    oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+# OAuth2 password bearer for user authentication
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
-    def get_current_user(token: str = Depends(oauth2_scheme)):
-        # You can implement user authentication logic here based on the token
-        if token ==f'{credentials[1]}':
-        # For simplicity, I'm just returning a dummy user for now
-            return {"username": f"{credentials[0]}"}
-        else:
-            return {"Error":"Please enter correct Token!!!"}
+def get_current_user(token: str = Depends(oauth2_scheme)):
+    fetch_cur.execute(username_query, (token,))
+    result = fetch_cur.fetchone()
 
-    @app.post("/upload/")
-    async def create_upload_file(file: UploadFile = File(...), current_user: dict = Depends(get_current_user)):
-        file.filename = f"{uuid.uuid4()}_{current_user['username']}"
-        contents = await file.read()
+    if result:
+        user_name = result[0]
+        print(f"User name for the given token: {user_name}")
+    else:
+        print("Token not found in the database.")
+
+    # You can implement user authentication logic here based on the token
+    if token == token:
+    # For simplicity, I'm just returning a dummy user for now
+        return {"username": f"{user_name}"}
+    else:
+        return {"Error":"Please enter correct Token!!!"}
+
+@app.post("/upload/")
+async def create_upload_file(file: UploadFile = File(...), current_user: dict = Depends(get_current_user)):
+    file.filename = f"{uuid.uuid4()}_{current_user['username']}"
+    contents = await file.read()
+    
+    with open(f"{IMAGEDIR_UPLOAD}{file.filename}", "wb") as f:
+        f.write(contents)
         
-        with open(f"{IMAGEDIR_UPLOAD}{file.filename}", "wb") as f:
-            f.write(contents)
-            
-        removeBG = Image.open(f"{IMAGEDIR_UPLOAD}{file.filename}")
-        R = remove(removeBG)
-        R.save(f"{IMAGEDIR_CLEANED}{file.filename}.png")
-        os.remove(f"{IMAGEDIR_UPLOAD}{file.filename}")
+    removeBG = Image.open(f"{IMAGEDIR_UPLOAD}{file.filename}")
+    R = remove(removeBG)
+    R.save(f"{IMAGEDIR_CLEANED}{file.filename}.png")
+    os.remove(f"{IMAGEDIR_UPLOAD}{file.filename}")
 
-        return {"filename": file.filename}
+    return {"filename": file.filename}
 
-    @app.get("/show/") 
-    async def read_user_files(current_user: dict = Depends(get_current_user)):
-        folder_path = r'cleaned_images/'
-        file_type = r'\*.png'
-        files = glob.glob(folder_path + file_type)
+@app.get("/show/") 
+async def read_user_files(current_user: dict = Depends(get_current_user)):
+    folder_path = r'cleaned_images/'
+    file_type = r'\*.png'
+    files = glob.glob(folder_path + file_type)
 
-        user_files = [file for file in files if current_user['username'] in file]
+    user_files = [file for file in files if current_user['username'] in file]
 
-        if not user_files:
-            raise HTTPException(status_code=404, detail="No cleaned images found for the user.")
+    if not user_files:
+        raise HTTPException(status_code=404, detail="No cleaned images found for the user.")
 
-        latest_file = max(user_files, key=os.path.getctime)
-        
-        return FileResponse(latest_file)
+    latest_file = max(user_files, key=os.path.getctime)
+    
+    return FileResponse(latest_file)
