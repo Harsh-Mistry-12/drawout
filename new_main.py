@@ -1,4 +1,4 @@
-# BASCKGROUND REMOVER API 
+# BACKGROUND REMOVER API WITH AUTH
 from fastapi import FastAPI, File, UploadFile, Depends, HTTPException
 from fastapi.security import OAuth2PasswordBearer
 from fastapi.responses import FileResponse
