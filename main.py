@@ -28,16 +28,14 @@ async def create_upload_file(file: UploadFile = File(...)):
 
     return {"filename": file.filename}
 
-@app.get("/show/") # It must return the latest image cleaned 
+@app.get("/show/") 
 async def read_random_file():
     # files = os.listdir(IMAGEDIR_CLEANED)
     folder_path = r'cleaned_images/'
     file_type = r'\*.png'
     files = glob.glob(folder_path + file_type)
     max_file = max(files, key=os.path.getctime)
-    # random_index = randint(0, len(files) - 1)
-    
-    # path = f"{IMAGEDIR_CLEANED}{files[0]}"
+
     path = f"{max_file}"
     
     return FileResponse(path)
